@@ -1,4 +1,4 @@
-import os
+from math import log,exp
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -10,24 +10,41 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from scipy.stats import boxcox
 
 
-def preprocess_data(file_path):
+def preprocess_data(series_df):
 
-   n = len(file_path)
+   n = len(series_df)
 
-   # Interpolate missing values
-   ds = pd.Series(file_path['Steps'].interpolate().values.flatten())
+   #check if there are missing values
+   if series_df.isnull().values.any():
+      print("Missing values detected in the dataset.")
+      ds = fill_missing_values(series_df['Steps'])
+   else:
+      print("No missing values detected in the dataset.")
+      ds = series_df['Steps']
 
-   # split with train and test with train being 80% and test 20%
-   train_size = int(len(ds) * 0.8)
-   train = ds[:train_size]
-   test = ds[train_size:]
+   # check for Outliers
+   long_walks = outlier_detection(ds)
+
+   # Plot the ds with outliers
+   plt.figure(figsize=(10, 5))
+   plt.plot(ds, label='Original Data', color='blue', linewidth=2)
+   plt.scatter(ds.index[long_walks], ds.iloc[long_walks], color='red', label='Outliers')
+   plt.title('Daily Steps Dataset with Outliers')
+   plt.xlabel('Days')
+   plt.ylabel('Steps')
+   plt.legend()
+   plt.show()
+
+   n_test = 28
+   train = ds[:-n_test]
+   test = ds[-n_test:]
 
    print(f"Dataset length: {len(ds)}")
    print(f"Training set length: {len(train)}")
    print(f"Test set length: {len(test)}")
 
-   plt.figure(figsize=(10, 5)) 
-   plt.plot(ds, label='Full Dataset', color='blue')
+   plt.figure(figsize=(10, 5))
+   plt.plot(ds, label='Full Dataset', color='blue', linewidth=2)
    plt.plot(train, label='Training Set', color='green')
    plt.plot(test, label='Test Set', color='red')
    plt.title('Daily Steps Dataset with Train, Validation, and Test Sets')
@@ -36,66 +53,93 @@ def preprocess_data(file_path):
    plt.legend()
    plt.show()
 
-   # check for Outliers
-   long_walks = outlier_detection(ds)
-
-   #plot differences between train and outliers
-   plt.figure(figsize=(10, 5))
-   plt.plot(ds, label='Train Data', color='blue')
-   plt.scatter(long_walks, ds[long_walks], color='red', label='Outliers')
-   plt.title('Train Data with Outliers')
-   plt.xlabel('Days')
-   plt.ylabel('Steps')
-   plt.legend()
+   # Check if the series is stationary
+   result  = seasonal_decompose(train, model='multiplicative', period=7, extrapolate_trend='freq')
+   result.plot()
    plt.show()
-
-   # Check autocorrelation
-   check_autocorrelation(train)
-
+   
    # Check stationarity
    print("Stationarity Test:")
-   stationarity_test(train, m=28)
+   stationarity_test(train, m=7)
 
    # Check normality
    print("Normality Test:")
    normality_test(train)
 
-   # do seasonal decomposition
-   result = seasonal_decompose(train, model='additive', period=28)
+   train_boxcox, boxcox_lambda = fit_boxcox(train)
+   test_boxcox = apply_boxcox(test, boxcox_lambda)
+
+   # Check autocorrelation
+   print("\nAutocorrelation Check:")
+   check_autocorrelation(train)
+   check_autocorrelation(train_boxcox)
+
+   print(f"\nApplying Box-Cox transformation...")
+   # Check stationarity after Box-Cox transformation
+   print("Stationarity Test after Box-Cox Transformation:")
+   stationarity_test(train_boxcox, m=7)
+   # Check normality after Box-Cox transformation
+   print("Normality Test after Box-Cox Transformation:")
+   normality_test(train_boxcox)
+
+   print(f"\nApplying Kalman Filter...")
+   # Apply Kalman filter
+   kf_model   = fit_kalman(train_boxcox)
+   train_kf   = apply_kalman(kf_model, train_boxcox)
+   test_kf    = apply_kalman(kf_model, test_boxcox)
+
+   print("Stationarity Test after Kalman Filter:")
+   stationarity_test(train_kf, m=7)
+
+   print("Normality Test after Kalman Filter:")
+   normality_test(train_kf)
+
+   result  = seasonal_decompose(train_kf, model='multiplicative', period=7, extrapolate_trend='freq')
    result.plot()
    plt.show()
 
-   train_processed, test_processed, boxcox_lambda = box_cox_transform(train, test)
-
-   # Check stationarity after Box-Cox transformation
-   print("Stationarity Test after Box-Cox Transformation:")
-   stationarity_test(train_processed, m=28)
-   # Check normality after Box-Cox transformation
-   print("Normality Test after Box-Cox Transformation:")
-   normality_test(train_processed)
-
-   # Apply Kalman filter
-   train_kf = kalman_filter(train_processed)
-   test_kf = kalman_filter(test_processed)
-
-   # Plot the results
-   plt.figure(figsize=(15, 10))
-   plt.plot(train.index, train_processed, label='Train Set (Box-Cox)', color='green')
-   plt.plot(test.index, test_processed, label='Test Set (Box-Cox)', color='red')
-   plt.plot(train.index, train_kf, label='Train Set (Kalman Filter)', color='orange')
-   plt.plot(test.index, test_kf, label='Test Set (Kalman Filter)', color='purple')
-   plt.title('Processed Train and Test Sets with Kalman Filter')
+   #plot kalman filter results
+   plt.figure(figsize=(10, 5))
+   plt.plot(train.index, train_boxcox, label='Original Train', color='blue', linewidth=2)
+   plt.plot(train.index, train_kf, label='Kalman Filtered Train', color='green')
+   plt.plot(test.index, test_boxcox, label='Original Test', color='red')
+   plt.plot(test.index, test_kf, label='Kalman Filtered Test', color='orange')  
+   plt.title('Daily Steps Dataset with Kalman Filter')
    plt.xlabel('Days')
    plt.ylabel('Steps')
    plt.legend()
    plt.show()
-   
-   # Check normality of Kalman filtered data
-   print("Normality Test after Kalman Filter:")
-   normality_test(train_kf)
 
-   return ds, train, test
+   return ds, train, test, train_kf, test_kf, boxcox_lambda
 
+def fill_missing_values(df):
+   df_prefilled = df.interpolate(method='linear', limit_direction='both')
+
+   # Compare models to decide additive or multiplicative
+   add = seasonal_decompose(df_prefilled, model='additive', period=7, extrapolate_trend='freq')
+   mul = seasonal_decompose(df_prefilled, model='multiplicative', period=7, extrapolate_trend='freq')
+   add_var = np.nanvar(add.seasonal) + np.nanvar(add.resid)
+   mul_var = np.nanvar(mul.seasonal) + np.nanvar(mul.resid)
+
+   model_type = 'multiplicative' if mul_var < add_var else 'additive'
+   print("Using", model_type, "model for decomposition")   
+
+   # Decompose with chosen model
+   decomp = seasonal_decompose(df_prefilled, model=model_type, period=7, extrapolate_trend='freq')
+   trend, season, resid = decomp.trend, decomp.seasonal, decomp.resid
+
+   # Deseasonalize + interpolate original
+   deseason = df - season  # preserves NaNs where original was missing
+   deseason_interp = deseason.interpolate(method='linear')
+   df_imputed = deseason_interp + season
+
+   plt.figure(figsize=(12,6))
+   df.plot(label='Original (with gaps)', marker='o')
+   df_imputed.plot(label='Imputed', linestyle='--')
+   plt.legend()
+   plt.show()
+
+   return df_imputed
 
 def outlier_detection(df):
    """
@@ -120,76 +164,71 @@ def outlier_detection(df):
    print(f"Lower bound: {lower}, Upper bound: {upper}")
    print(f"Number of outliers detected: {num_outliers}")
 
-   # Outliers are not deleted from the dataset, but their indices are returned to be used later
+   # Indices of outliers
    if num_outliers > 0:
       print(f"Valori outlier: {df[outliers]}")
 
    return np.where(outliers)[0].tolist()
 
-
-def stationarity_test(ds, m=29):
+def stationarity_test(ds, m=7):
    adf_result = adfuller(ds)
    print(f'ADF Statistic: {adf_result[0]}')
    print(f'p-value: {adf_result[1]}')
    if adf_result[1] < 0.05:
-        print("The series is stationary (p < 0.05)")
+        print("The series is stationary (p < 0.05)\n")
    else:
-        print("The series is non-stationary (p >= 0.05)")
+        print("The series is non-stationary (p >= 0.05)\n")
 
 def normality_test(ds):
    shapiro_test = stats.shapiro(ds)
    print(f"Shapiro-Wilk Test: Statistic={shapiro_test.statistic}, p-value={shapiro_test.pvalue}")
    if shapiro_test.pvalue > 0.05:
-       print("Time series is normal (p >= 0.05)")
+       print("Time series is normal (p >= 0.05)\n")
    else:
-       print("Time series is not normal (p < 0.05)")
+       print("Time series is not normal (p < 0.05)\n")
 
 def check_autocorrelation(ds):
-   """
-   Plot the autocorrelation function of a time series.
-   
-   Parameters:
-   ds (array-like): Time series data.
-   """
-   plot_acf(ds, lags=84)
+   plot_acf(ds, lags=56, alpha=0.05)
    plt.title('Autocorrelation Function')
    plt.xlabel('Lags - Number of Days')
    plt.ylabel('Autocorrelation')
    plt.grid()
    plt.show()
 
-def box_cox_transform(train, test):
+def fit_boxcox(train):
+
    train_positive = train + 1e-6 if (train <= 0).any() else train
-   train_transformed, lmbda = boxcox(train_positive)
-   boxcox_lambda = lmbda
+   train_boxcox, lmbda = boxcox(train_positive)
 
-   # Apply to all sets using the same lambda
+   print(f"✓ Fitted Box-Cox transformation on train (lambda={lmbda:.4f})")
+
+   return pd.Series(train_boxcox, index=train.index), lmbda
+
+def apply_boxcox(test, lmbda):
    test_positive = test + 1e-6 if (test <= 0).any() else test
+   test_boxcox = boxcox(test_positive, lmbda=lmbda)
 
-   train_transformed = pd.Series(train_transformed, index=train.index)
-   test_transformed = pd.Series(boxcox(test_positive, lmbda=lmbda), index=test.index)
+   print(f"✓ Applied Box-Cox transformation on test (lambda={lmbda:.4f})")
 
-   print(f"✓ Applied Box-Cox transformation (lambda={lmbda:.4f})")
+   return pd.Series(test_boxcox, index=test.index)
 
-   return train_transformed, test_transformed, boxcox_lambda
+def invert_boxcox(value, lam):
+    if lam == 0:
+        return np.exp(value)
+    return np.power(lam * value + 1, 1 / lam)
 
-def kalman_filter(ds):
-   """
-   Apply Kalman filter to a time series.
+def fit_kalman(train):
+   kf = KalmanFilter(
+        transition_matrices=[1],
+        observation_matrices=[1],
+        initial_state_mean=train.iloc[0],
+        n_dim_state=1
+    )
    
-   Parameters:
-   ds (array-like): Time series data.
-   
-   Returns:
-   np.ndarray: Filtered state means.
-   """
+   return kf.em(train.values)
 
-   measurements = ds.to_numpy()
-   kf = KalmanFilter(transition_matrices=[1],
-                     observation_matrices=[1],
-                     initial_state_mean=measurements[0],
-                     initial_state_covariance=1,
-                     observation_covariance=10,
-                     transition_covariance=10) 
-   state_means, _ = kf.filter(measurements)
-   return state_means
+def apply_kalman(kf_fitted, series):
+   
+   state_means, _ = kf_fitted.smooth(series.values)
+
+   return pd.Series(state_means.flatten(), index=series.index)
