@@ -1,10 +1,10 @@
 import pandas as pd
 from preprocessing import preprocess_data
 from compare_metrics import compare_metrics
-from models.xgboost import fit_xgboost_model
+from models.xgboost import xgboost_model
 from models.sarima import sarima_model
 from utils import plotting_models
-from models.mlp import nn_model
+from models.mlp import mlp_model
 from utils import invert_boxcox
 
 # Load dataset
@@ -19,7 +19,7 @@ dataset = pd.read_csv(
 
 dataset = dataset.asfreq('D')
 
-ds, train_clean, test_clean, train_boxcox_kf, test_boxcox_kf, boxcox_lambda = preprocess_data(dataset)
+ds, train_clean, test_clean, train_proc, test_proc, boxcox_lambda = preprocess_data(dataset)
 
 look_back_list = [7, 14, 21, 28]
 
@@ -34,8 +34,12 @@ Selected SARIMA(2, 1, 2) x (1, 0, 1, 7) (m=7) with lowest AIC=1443.11
 """
 order = (2, 1, 2)
 seasonal_order = (1, 0, 1, 7)
-sarima_pred = sarima_model(train_boxcox_kf, test_boxcox_kf, None, boxcox_lambda, None, None)
-plotting_models(train_clean, test_clean, train_boxcox_kf, test_boxcox_kf, sarima_pred, "SARIMA", boxcox_lambda)
+sarima_pred = sarima_model(train_proc, test_proc, None, boxcox_lambda, None, None)
+plotting_models(train_clean, test_clean, train_proc, test_proc, sarima_pred, "SARIMA", boxcox_lambda)
+
+# Fit MLP model
+nn_mod, nn_pred, y_pred = mlp_model(train_proc, test_proc, None, boxcox_lambda)
+plotting_models(train_clean, test_clean, train_proc, test_proc, nn_pred, "MLP", boxcox_lambda)
 
 # Fit XGBoost model
 """
@@ -48,14 +52,10 @@ Selected best look_back: 14
    Achieved RMSE=2.9336
 """
 best_xgboost_params = {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 50, 'subsample': 0.9}
-xgb_pred = fit_xgboost_model(train_boxcox_kf, test_boxcox_kf, boxcox_lambda, None, None)
-plotting_models(train_clean, test_clean, train_boxcox_kf, test_boxcox_kf, xgb_pred, "XGBoost", boxcox_lambda)
-
-# Fit MLP model
-nn_mod, nn_pred, y_pred = nn_model(train_boxcox_kf, test_boxcox_kf, None, boxcox_lambda)
-plotting_models(train_clean, test_clean, train_boxcox_kf, test_boxcox_kf, nn_pred, "MLP", boxcox_lambda)
+xgb_pred = xgboost_model(train_proc, test_proc, boxcox_lambda, None, None)
+plotting_models(train_clean, test_clean, train_proc, test_proc, xgb_pred, "XGBoost", boxcox_lambda)
 
 
 # Compare models using compare_metrics
-test_kf = invert_boxcox(test_boxcox_kf, boxcox_lambda)
-best_model = compare_metrics(test_kf, sarima_pred, xgb_pred, nn_pred)
+test_inv = invert_boxcox(test_proc, boxcox_lambda)
+best_model = compare_metrics(test_inv, sarima_pred, xgb_pred, nn_pred)
