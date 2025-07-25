@@ -13,9 +13,11 @@ def quick_accuracy_metrics(actual, forecast):
 def accuracy_metrics(actual, forecast, model_name=None):
     """
     Calculate various accuracy metrics between actual and forecasted values.
+    
     Parameters:
     - actual: array-like, actual values
     - forecast: array-like, forecasted values
+
     Returns:
     - me: Mean Error
     - mae: Mean Absolute Error
@@ -53,6 +55,7 @@ def accuracy_metrics(actual, forecast, model_name=None):
 def create_dataset(dataset, look_back):
     """
     Create a dataset with look_back time steps.
+
     Parameters:
     - dataset: array-like, input data
     - look_back: int, number of previous time steps to consider
@@ -70,6 +73,7 @@ def create_dataset(dataset, look_back):
 def invert_boxcox(value, lam):
     """
     Invert Box-Cox transformation.
+
     Parameters:
     - value: array-like, transformed values
     - lam: float, lambda value used in Box-Cox transformation
@@ -91,6 +95,7 @@ def invert_boxcox(value, lam):
 def plotting_models(train, test, train_proc, test_proc, forecast, model_name, boxcox_lambda=None):
    """
    Plot the training, test, and forecast data.
+
    Parameters:
    - train: pd.Series of training data
    - test: pd.Series of test data
@@ -104,7 +109,7 @@ def plotting_models(train, test, train_proc, test_proc, forecast, model_name, bo
    plt.figure(figsize=(12, 6))
    plt.plot(train.index, train, label='Train', color='blue', linewidth=2)
    plt.plot(test.index, test, label='Test', color='orange', linewidth=2)
-   plt.plot(train.index, train_proc, label='Train', color='lightblue')
+   plt.plot(train.index, train_proc, label='Train', color='green')
    plt.plot(test.index, test_proc, label='Test', color='red')
    plt.plot(forecast.index, forecast, label='Forecast', color='purple', linestyle='--', linewidth=2)
    plt.title('' + model_name + ' Forecast')

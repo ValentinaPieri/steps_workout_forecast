@@ -122,28 +122,6 @@ def compare_metrics(test_orig, test_preds_sarima, test_preds_xgb, test_preds_mlp
             "- MLP vs XGBoost: DM stat: {:.4f}, p-value: {:.4f}".format(dm_nn_xgb.DM, dm_nn_xgb.p_value)
         ]
 
-    lines += [
-        "",
-        "## Final Comparison of the Models on the Test Set",
-        "",
-    ]
-
-    rmses = {
-        "SARIMA": sarima_results['RMSE'],
-        "MLP":    mlp_results['RMSE'],
-        "XGBoost": xgb_results['RMSE']
-    }
-
-    ranked = sorted(rmses.items(), key=lambda x: x[1])
-    ranks = {name: idx+1 for idx, (name, _) in enumerate(ranked)}
-
-    # based on the ranks, add the results to the report
-    lines.append(f"| {"Model"} | {"RMSE (steps)"} | {"MAE (steps)"} | {"MAPE (%)"} | {"Rank by RMSE"} |")
-    lines.append("|-------|-------------|------------|----------|--------------|")
-    for model, results in zip(["SARIMA", "MLP", "XGBoost"], [sarima_results, mlp_results, xgb_results]):
-        lines.append(f"| {model} | {results['RMSE']:.4f} | {results['MAE']:.4f} | {results['MAPE']:.2f} | {ranks[model]} |")
-    lines.append("")
-
     # Determine the best model based on RMSE
     best_model = min(
         [("SARIMA", sarima_results), ("MLP", mlp_results), ("XGBoost", xgb_results)],
@@ -152,10 +130,7 @@ def compare_metrics(test_orig, test_preds_sarima, test_preds_xgb, test_preds_mlp
 
     lines += [
         "",
-        "## Key Results",
-        "",
-        "### 🏆 Best Performing Model",
-        f"**{best_model[0]}** achieved the lowest test set RMSE of **{best_model[1]['RMSE']:.4f} steps**",
+        f"The best model was **{best_model[0]}** having the lowest RMSE of **{best_model[1]['RMSE']:.4f} steps**",
         ""
     ]
 
