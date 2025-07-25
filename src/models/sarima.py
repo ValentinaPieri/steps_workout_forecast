@@ -48,7 +48,7 @@ def search_sarima_model(train, seasonal_m_list):
     return best_m, best_order, best_seasonal
 
 
-def sarima_model(train, test, seasonal_m_list, boxcox_lambda=None, order=None, seasonal_order=None):
+def sarima_model(train, test, seasonal_m_list=None, boxcox_lambda=None, order=None, seasonal_order=None):
     """
     Fits a SARIMA model by searching over seasonal_m_list, then forecasts the test set.
 

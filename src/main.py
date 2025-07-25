@@ -30,16 +30,19 @@ The SARIMA model is then fitted to the training data, and forecasts are generate
 The best model was decided based on the lowest AIC value.
 
 Output:
-Selected SARIMA(2, 1, 2) x (1, 0, 1, 7) (m=7) with lowest AIC=1443.11
+Selected SARIMA(1, 0, 0) x (2, 0, 1, 7) (m=7) with lowest AIC=2089.58
 """
-order = (2, 1, 2)
-seasonal_order = (1, 0, 1, 7)
-sarima_pred = sarima_model(train_proc, test_proc, None, boxcox_lambda, None, None)
+print("→ Checking SARIMA model...")
+order = (1, 0, 0)
+seasonal_order = (2, 0, 1, 7)
+sarima_pred = sarima_model(train_proc, test_proc, None, boxcox_lambda, order, seasonal_order)
 plotting_models(train_clean, test_clean, train_proc, test_proc, sarima_pred, "SARIMA", boxcox_lambda)
 
+
+print("\n→ Checking MLP model...")
 # Fit MLP model
-nn_mod, nn_pred, y_pred = mlp_model(train_proc, test_proc, None, boxcox_lambda)
-plotting_models(train_clean, test_clean, train_proc, test_proc, nn_pred, "MLP", boxcox_lambda)
+mlp_pred = mlp_model(train_proc, test_proc, None, boxcox_lambda)
+plotting_models(train_clean, test_clean, train_proc, test_proc, mlp_pred, "MLP", boxcox_lambda)
 
 # Fit XGBoost model
 """
@@ -48,14 +51,15 @@ The model is trained using a grid search over hyperparameters and look_back valu
 The best model is selected based on the lowest RMSE.
 Output:
 Selected best look_back: 14
-   Best params: {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 50, 'subsample': 0.9}
-   Achieved RMSE=2.9336
+   Best params: {'learning_rate': 0.05, 'max_depth': 3, 'n_estimators': 75, 'subsample': 0.8}
 """
-best_xgboost_params = {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 50, 'subsample': 0.9}
-xgb_pred = xgboost_model(train_proc, test_proc, boxcox_lambda, None, None)
+print("\n→ Checking XGBoost model...")
+best_xgboost_lb = 14
+best_xgboost_params = {'learning_rate': 0.05, 'max_depth': 3, 'n_estimators': 75, 'subsample': 0.8}
+xgb_pred = xgboost_model(train_proc, test_proc, boxcox_lambda, best_xgboost_lb, best_xgboost_params)
 plotting_models(train_clean, test_clean, train_proc, test_proc, xgb_pred, "XGBoost", boxcox_lambda)
 
 
 # Compare models using compare_metrics
 test_inv = invert_boxcox(test_proc, boxcox_lambda)
-best_model = compare_metrics(test_inv, sarima_pred, xgb_pred, nn_pred)
+best_model = compare_metrics(test_inv, sarima_pred, mlp_pred, xgb_pred)

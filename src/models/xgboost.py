@@ -4,7 +4,7 @@ from xgboost import XGBRegressor
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from utils import create_dataset, invert_boxcox, quick_accuracy_metrics
 
-def xgboost_model(train, test, boxcox_lambda, look_back, best_params=None):
+def xgboost_model(train, test, boxcox_lambda=None, look_back=None, best_params=None):
     """
     Fit an XGBoost model to the training data and predict on the test data.
 

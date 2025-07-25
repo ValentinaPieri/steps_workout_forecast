@@ -17,7 +17,7 @@ def check_dm_test(actual_lst, sarima_preds, mlp_preds, xgboost_preds, h=1, crit=
 
     return dm_sarima_nn, dm_sarima_xgb, dm_nn_xgb
 
-def compare_metrics(test_orig, test_preds_sarima, test_preds_xgb, test_preds_mlp):
+def compare_metrics(test, sarima_preds, mlp_preds, xgb_preds):
     """
     Create a comprehensive Markdown report with all model results
     """
@@ -26,21 +26,21 @@ def compare_metrics(test_orig, test_preds_sarima, test_preds_xgb, test_preds_mlp
     print("\n" + "-"*50 + "\n")
     
     # SARIMA
-    if test_preds_sarima is not None:
-        sarima_results = accuracy_metrics(test_orig[-len(test_preds_sarima):], test_preds_sarima, "SARIMA")
+    if sarima_preds is not None:
+        sarima_results = accuracy_metrics(test[-len(sarima_preds):], sarima_preds, "SARIMA")
 
     print("\n" + "-"*50 + "\n")
 
     # MLP
-    if test_preds_mlp is not None:
-        mlp_results = accuracy_metrics(test_orig[-len(test_preds_mlp):], test_preds_mlp, "MLP")
+    if mlp_preds is not None:
+        mlp_results = accuracy_metrics(test[-len(mlp_preds):], mlp_preds, "MLP")
 
     # print a division line
     print("\n" + "-"*50 + "\n")
     
     # XGBoost
-    if test_preds_xgb is not None:
-        xgb_results = accuracy_metrics(test_orig[-len(test_preds_xgb):], test_preds_xgb, "XGBoost")
+    if xgb_preds is not None:
+        xgb_results = accuracy_metrics(test[-len(xgb_preds):], xgb_preds, "XGBoost")
 
     print("\n" + "-"*50 + "\n")
     
@@ -106,7 +106,7 @@ def compare_metrics(test_orig, test_preds_sarima, test_preds_xgb, test_preds_mlp
         ]
 
     # Add Diebold-Mariano test results
-    dm_sarima_nn, dm_sarima_xgb, dm_nn_xgb = check_dm_test(test_orig, test_preds_sarima, test_preds_mlp, test_preds_xgb)
+    dm_sarima_nn, dm_sarima_xgb, dm_nn_xgb = check_dm_test(test, sarima_preds, mlp_preds, xgb_preds)
 
     if sarima_results is not None and mlp_results is not None and xgb_results is not None:
         lines += [

@@ -35,7 +35,7 @@ def scaling_data(train, val, test):
 
     return train_scaled, val_scaled, test_scaled, scaler
 
-def mlp_model(train, test, look_back_list, boxcox_lambda=None, best_params=None):
+def mlp_model(train, test, look_back_list=None, boxcox_lambda=None, best_params=None):
     """
     Fit a Multi-Layer Perceptron (MLP) model to the training data and predict on the test set.
 
@@ -212,5 +212,5 @@ def search_mlp_model(train, val, look_back_list, scaler, param_grid=None, n_tria
                     'look_back': look_back
                 })
 
-    print("🔍 Best config:", best['params'], "look_back:", best['look_back'], f"RMSE={best['rmse']:.4f}")
+    print("Best config:", best['params'], "look_back:", best['look_back'], f"RMSE={best['rmse']:.4f}")
     return best['params'], best['look_back']
