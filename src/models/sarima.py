@@ -44,7 +44,7 @@ def search_sarima_model(train, seasonal_m_list):
             best_cfg = (m, order, seas_order)
 
     best_m, best_order, best_seasonal = best_cfg
-    print(f"\n🏆 Selected SARIMA{best_order} x {best_seasonal} (m={best_m}) with lowest AIC={best_aic:.2f}")
+    print(f"\nSelected SARIMA{best_order} x {best_seasonal} (m={best_m}) with lowest AIC={best_aic:.2f}")
     return best_m, best_order, best_seasonal
 
 
@@ -67,7 +67,6 @@ def sarima_model(train, test, seasonal_m_list, boxcox_lambda=None, order=None, s
             seasonal_m_list = [7, 14, 21, 28]
         best_m, order, seasonal_order = search_sarima_model(train, seasonal_m_list)
 
-    # 2) Fit final model
     model = SARIMAX(
         train,
         order=order,
@@ -78,15 +77,14 @@ def sarima_model(train, test, seasonal_m_list, boxcox_lambda=None, order=None, s
     fitted = model.fit(disp=False)
     print(f"Final model AIC: {fitted.aic:.2f}")
 
-    # 3) Forecast in Box–Cox domain
     fc_bc = fitted.get_forecast(len(test)).predicted_mean
 
-    # 4) Invert Box–Cox if needed
     if boxcox_lambda is not None:
         forecast = invert_boxcox(fc_bc, boxcox_lambda)
         test_orig = invert_boxcox(test, boxcox_lambda)
     else:
         forecast = fc_bc
+        test_orig = test
 
     quick_accuracy_metrics(test_orig, forecast)
 
