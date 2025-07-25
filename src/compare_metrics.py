@@ -47,7 +47,7 @@ def compare_metrics(test, sarima_preds, mlp_preds, xgb_preds):
     lines = [
         "# Report on Daily Steps Forecasting Results",
         "",
-        "This project presents the results of the analysis of the forecasting of a time series ons daily activity metrics, comparing three different models: SARIMA, MLP, and XGBoost.",
+        "This project presents the results of the analysis of the forecasting of a time series on daily activity metrics, comparing three different models: SARIMA, MLP, and XGBoost.",
         "",
         "## Preprocessing on the Dataset",
         "- **Missing Values:** Handled by filling with previous values",
